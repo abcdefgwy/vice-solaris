@@ -1,61 +1,290 @@
-// Every tuning number and colour in one place. The playfield is a fixed 1280x720 logical area;
-// the renderer scales it to the window, so no rule below depends on the screen size.
+// Vice Solaris 全局配置与数值常量
+// 世界观：Solmara Bay（索尔马拉湾）—— 原创阳光海岸开放世界
 
-export const FIELD = { width: 1280, height: 720, groundY: 664 };
-
-/** The simulation's fixed step, in seconds: 60 updates a second whatever the display's rate. */
 export const STEP = 1 / 60;
+export const SAVE_KEY = 'vice_solaris_save_v1';
 
-export const PLAYER = {
-  width: 72,
-  height: 24,
-  speed: 560,
-  invulnerable: 1.5,
+// 世界地图总尺寸（像素）
+export const WORLD = {
+  width: 4800,
+  height: 3600,
+  tileSize: 120,
+  roadWidth: 160,
+  sidewalkWidth: 28,
 };
 
-export const LIVES = 3;
-
-export const BLOCK = {
-  minWidth: 40,
-  maxWidth: 110,
-  height: 36,
-  speed: 240,
-  speedPerLevel: 30,
-  speedJitter: 90,
-  interval: 0.55,
-  intervalScale: 0.88,
-  minInterval: 0.14,
-  dodgePoints: 1,
+// 视口逻辑基准尺寸（用于缩放计算）
+export const VIEW = {
+  baseWidth: 1280,
+  baseHeight: 720,
 };
 
-export const COIN = {
-  size: 24,
-  speed: 190,
-  speedPerLevel: 14,
-  interval: 1.4,
-  intervalJitter: 0.8,
-  points: 10,
-};
-
-/** Seconds of play per level, and the last level: speeds and spawn rates stop growing there. */
-export const LEVEL = { seconds: 12, max: 12 };
-
-/** How many falling things can exist at once; the pool is allocated once, at boot. */
-export const POOL_SIZE = 64;
-
+// 调色板：黄金时刻日落 + 热带霓虹美学
 export const PALETTE = {
-  backdrop: '#11141b',
-  sky: '#1b1f2a',
-  ground: '#2a3040',
-  player: '#4fc3f7',
-  block: '#e5534b',
-  coin: '#f2c94c',
-  panel: '#252b38',
-  text: '#eef1f5',
-  muted: '#8b93a3',
+  oceanDeep: '#093452',
+  oceanMid: '#0e587a',
+  oceanShallow: '#1b8ea6',
+  foam: 'rgba(225, 250, 255, 0.45)',
+  sand: '#e8cfa0',
+  sandWet: '#d3b57d',
+  grass: '#2e5e3e',
+  asphalt: '#222630',
+  asphaltDark: '#191d25',
+  sidewalk: '#6f737d',
+  sidewalkEdge: '#4f535c',
+  roadLineYellow: '#f2c14e',
+  roadLineWhite: '#dfe5ec',
+  neonPink: '#ff3b9a',
+  neonCyan: '#29f0ff',
+  neonGold: '#ffd166',
+  neonPurple: '#9d4edd',
+  neonGreen: '#38ef7d',
+  sunGlow: 'rgba(255, 138, 76, 0.16)',
+  hudBg: 'rgba(12, 16, 26, 0.78)',
+  hudBorder: 'rgba(255, 255, 255, 0.16)',
 };
 
-export const FONT = 'system-ui, -apple-system, "Segoe UI", sans-serif';
+// 6 大海滨街区定义
+export const DISTRICTS = [
+  {
+    id: 'suncrest',
+    name: 'Suncrest Villas',
+    subtitle: '日冠山庄',
+    x: 0,
+    y: 0,
+    w: 1600,
+    h: 1400,
+    accent: '#ff9f43',
+  },
+  {
+    id: 'downtown',
+    name: 'Downtown Towers',
+    subtitle: '市中心摩天楼',
+    x: 1600,
+    y: 0,
+    w: 1800,
+    h: 1600,
+    accent: '#29f0ff',
+  },
+  {
+    id: 'industrial',
+    name: 'Industrial Yard',
+    subtitle: '东区工业园',
+    x: 3400,
+    y: 0,
+    w: 1400,
+    h: 1800,
+    accent: '#ff6b6b',
+  },
+  {
+    id: 'palmstrip',
+    name: 'Palm Strip Boulevard',
+    subtitle: '棕榈霓虹大道',
+    x: 0,
+    y: 1400,
+    w: 1800,
+    h: 2200,
+    accent: '#ff3b9a',
+  },
+  {
+    id: 'neondocks',
+    name: 'Neon Docks',
+    subtitle: '霓虹货运码头',
+    x: 1800,
+    y: 1600,
+    w: 1600,
+    h: 2000,
+    accent: '#9d4edd',
+  },
+  {
+    id: 'oceanbeach',
+    name: 'Ocean Beach & Harbor',
+    subtitle: '海洋沙滩与海湾',
+    x: 3400,
+    y: 1800,
+    w: 1400,
+    h: 1800,
+    accent: '#ffd166',
+  },
+];
 
-/** Where the best score is kept between visits (this browser only). */
-export const BEST_KEY = 'block-dodger.best';
+// 车辆类型配置
+export const VEHICLE_TYPES = {
+  sports: {
+    id: 'sports',
+    name: 'Solara GT',
+    w: 64,
+    h: 32,
+    maxSpeed: 680,
+    reverseSpeed: 210,
+    accel: 540,
+    brake: 680,
+    turnRate: 3.1,
+    grip: 7.5,
+    driftGrip: 2.2,
+    hp: 130,
+    mass: 1.0,
+    colors: ['#ff3b9a', '#29f0ff', '#ffd166', '#ff5733', '#f4f4f8'],
+  },
+  muscle: {
+    id: 'muscle',
+    name: 'Vipera V8',
+    w: 68,
+    h: 34,
+    maxSpeed: 610,
+    reverseSpeed: 195,
+    accel: 490,
+    brake: 600,
+    turnRate: 2.8,
+    grip: 6.2,
+    driftGrip: 1.8,
+    hp: 165,
+    mass: 1.25,
+    colors: ['#e63946', '#ff9f1c', '#3a86ff', '#2b2d42'],
+  },
+  taxi: {
+    id: 'taxi',
+    name: 'Bay Cab',
+    w: 64,
+    h: 32,
+    maxSpeed: 500,
+    reverseSpeed: 180,
+    accel: 390,
+    brake: 550,
+    turnRate: 2.7,
+    grip: 7.2,
+    driftGrip: 2.5,
+    hp: 145,
+    mass: 1.1,
+    colors: ['#f4b942'],
+  },
+  van: {
+    id: 'van',
+    name: 'Cargo Mule',
+    w: 78,
+    h: 38,
+    maxSpeed: 420,
+    reverseSpeed: 150,
+    accel: 310,
+    brake: 480,
+    turnRate: 2.2,
+    grip: 6.8,
+    driftGrip: 2.6,
+    hp: 230,
+    mass: 1.7,
+    colors: ['#8d99ae', '#457b9d', '#e9c46a', '#264653'],
+  },
+  police: {
+    id: 'police',
+    name: 'SPD Interceptor',
+    w: 66,
+    h: 33,
+    maxSpeed: 645,
+    reverseSpeed: 210,
+    accel: 530,
+    brake: 650,
+    turnRate: 3.0,
+    grip: 7.6,
+    driftGrip: 2.4,
+    hp: 180,
+    mass: 1.2,
+    colors: ['#161b26'],
+  },
+  swat: {
+    id: 'swat',
+    name: 'Aegis APC',
+    w: 84,
+    h: 42,
+    maxSpeed: 460,
+    reverseSpeed: 160,
+    accel: 340,
+    brake: 520,
+    turnRate: 2.0,
+    grip: 7.0,
+    driftGrip: 3.0,
+    hp: 420,
+    mass: 2.6,
+    colors: ['#1d2633'],
+  },
+};
+
+// 武器配置表（快捷键 1 - 4）
+export const WEAPONS = [
+  {
+    id: 'pistol',
+    name: '9mm Pistol',
+    slot: 1,
+    fireRate: 0.24,
+    damage: 28,
+    speed: 1150,
+    spread: 0.04,
+    pellets: 1,
+    range: 700,
+    color: '#ffe082',
+    explosive: false,
+    infinite: true,
+    maxAmmo: 999,
+  },
+  {
+    id: 'smg',
+    name: 'MP-Solar SMG',
+    slot: 2,
+    fireRate: 0.085,
+    damage: 18,
+    speed: 1220,
+    spread: 0.11,
+    pellets: 1,
+    range: 640,
+    color: '#80deea',
+    explosive: false,
+    infinite: false,
+    maxAmmo: 240,
+  },
+  {
+    id: 'shotgun',
+    name: 'Breacher 12G',
+    slot: 3,
+    fireRate: 0.68,
+    damage: 22,
+    speed: 1020,
+    spread: 0.26,
+    pellets: 6,
+    range: 360,
+    color: '#ffab91',
+    explosive: false,
+    infinite: false,
+    maxAmmo: 48,
+  },
+  {
+    id: 'launcher',
+    name: 'Hydra RPG',
+    slot: 4,
+    fireRate: 1.25,
+    damage: 180,
+    speed: 720,
+    spread: 0.02,
+    pellets: 1,
+    range: 820,
+    color: '#ff5252',
+    explosive: true,
+    blastRadius: 150,
+    infinite: false,
+    maxAmmo: 12,
+  },
+];
+
+// 玩家基础属性
+export const PLAYER_CFG = {
+  radius: 14,
+  walkSpeed: 215,
+  sprintSpeed: 335,
+  maxHp: 100,
+  maxArmor: 100,
+  meleeDamage: 40,
+  meleeRange: 44,
+  meleeCooldown: 0.42,
+  jackRadius: 68,
+};
+
+// 通缉星级阈值（crimeHeat 分数）
+export const WANTED_THRESHOLDS = [0, 80, 220, 420, 720, 1100];

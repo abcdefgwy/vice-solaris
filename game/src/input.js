@@ -1,53 +1,120 @@
-// Keyboard and pointer input. Held keys give a steering direction; one-shot presses (start or
-// restart, pause) are queued as bit flags and taken once by the loop, so a press between two
-// frames is never lost and never counted twice.
+// 统一键盘与鼠标输入管理器：移动、冲刺、手刹漂移、抢车、武器 1-4 切换、瞄准射击、静音与暂停
 
-export const ACTION_CONFIRM = 1;
-export const ACTION_PAUSE = 2;
+export function createInput(canvas, audio) {
+  const keys = new Set();
+  const oneshot = {
+    enterVehicle: false,
+    pause: false,
+    confirm: false,
+    mute: false,
+    melee: false,
+    weaponSlot: -1,
+  };
 
-const LEFT = new Set(['ArrowLeft', 'KeyA']);
-const RIGHT = new Set(['ArrowRight', 'KeyD']);
-const CONFIRM = new Set(['Space', 'Enter']);
-const PAUSE = new Set(['KeyP', 'Escape']);
+  let mouseX = 0;
+  let mouseY = 0;
+  let mouseDown = false;
+  let hasMouseMoved = false;
 
-export function createInput(target) {
-  let left = false;
-  let right = false;
-  let actions = 0;
+  function onKeyDown(e) {
+    if (audio) audio.unlock();
+    const code = e.code;
 
-  window.addEventListener('keydown', (event) => {
-    if (LEFT.has(event.code)) left = true;
-    else if (RIGHT.has(event.code)) right = true;
-    else if (CONFIRM.has(event.code)) {
-      if (!event.repeat) actions |= ACTION_CONFIRM;
-    } else if (PAUSE.has(event.code)) {
-      if (!event.repeat) actions |= ACTION_PAUSE;
-    } else return;
-    event.preventDefault();
-  });
-  window.addEventListener('keyup', (event) => {
-    if (LEFT.has(event.code)) left = false;
-    else if (RIGHT.has(event.code)) right = false;
-  });
-  // A key released while the tab is hidden never sends keyup: let go of everything on blur.
-  window.addEventListener('blur', () => {
-    left = false;
-    right = false;
-  });
-  target.addEventListener('pointerdown', () => {
-    actions |= ACTION_CONFIRM;
-  });
+    if (!e.repeat) {
+      if (code === 'KeyE' || code === 'KeyF') oneshot.enterVehicle = true;
+      if (code === 'KeyP' || code === 'Escape') oneshot.pause = true;
+      if (code === 'Enter' || code === 'Space') oneshot.confirm = true;
+      if (code === 'KeyM') oneshot.mute = true;
+      if (code === 'KeyQ' || code === 'KeyV') oneshot.melee = true;
+      if (code === 'Digit1') oneshot.weaponSlot = 0;
+      if (code === 'Digit2') oneshot.weaponSlot = 1;
+      if (code === 'Digit3') oneshot.weaponSlot = 2;
+      if (code === 'Digit4') oneshot.weaponSlot = 3;
+    }
+
+    keys.add(code);
+    if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(code)) {
+      e.preventDefault();
+    }
+  }
+
+  function onKeyUp(e) {
+    keys.delete(e.code);
+  }
+
+  function onMouseMove(e) {
+    const rect = canvas.getBoundingClientRect();
+    mouseX = e.clientX - rect.left;
+    mouseY = e.clientY - rect.top;
+    hasMouseMoved = true;
+  }
+
+  function onMouseDown(e) {
+    if (audio) audio.unlock();
+    if (e.button === 0) {
+      mouseDown = true;
+      oneshot.confirm = true;
+    } else if (e.button === 2) {
+      oneshot.melee = true;
+    }
+  }
+
+  function onMouseUp(e) {
+    if (e.button === 0) mouseDown = false;
+  }
+
+  window.addEventListener('keydown', onKeyDown);
+  window.addEventListener('keyup', onKeyUp);
+  canvas.addEventListener('mousemove', onMouseMove);
+  canvas.addEventListener('mousedown', onMouseDown);
+  window.addEventListener('mouseup', onMouseUp);
+  canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
   return {
-    /** -1 for left, 1 for right, 0 for neither or both. */
-    direction() {
-      return (right ? 1 : 0) - (left ? 1 : 0);
+    sample(camera, viewWidth, viewHeight, player) {
+      const up = keys.has('KeyW') || keys.has('ArrowUp');
+      const down = keys.has('KeyS') || keys.has('ArrowDown');
+      const left = keys.has('KeyA') || keys.has('ArrowLeft');
+      const right = keys.has('KeyD') || keys.has('ArrowRight');
+      const sprint = keys.has('ShiftLeft') || keys.has('ShiftRight');
+      const handbrake = keys.has('Space');
+      const fire = mouseDown || keys.has('KeyJ');
+
+      let aimAngle = null;
+      if (hasMouseMoved && camera) {
+        const worldMouseX = camera.x + (mouseX - viewWidth / 2) / camera.zoom;
+        const worldMouseY = camera.y + (mouseY - viewHeight / 2) / camera.zoom;
+        aimAngle = Math.atan2(worldMouseY - player.y, worldMouseX - player.x);
+      }
+
+      const out = {
+        up,
+        down,
+        left,
+        right,
+        sprint,
+        handbrake,
+        fire,
+        aimAngle,
+        enterVehicle: oneshot.enterVehicle,
+        melee: oneshot.melee,
+        weaponSlot: oneshot.weaponSlot,
+      };
+      oneshot.enterVehicle = false;
+      oneshot.melee = false;
+      oneshot.weaponSlot = -1;
+      return out;
     },
-    /** The one-shot presses since the last call, as ACTION_* flags. */
-    takeActions() {
-      const taken = actions;
-      actions = 0;
-      return taken;
+    takeSystemActions() {
+      const res = {
+        pause: oneshot.pause,
+        confirm: oneshot.confirm,
+        mute: oneshot.mute,
+      };
+      oneshot.pause = false;
+      oneshot.confirm = false;
+      oneshot.mute = false;
+      return res;
     },
   };
 }
