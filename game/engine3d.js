@@ -352,7 +352,7 @@ void main() {
 // ----------------------------------------------------
 // 3. WebGL2 渲染器核心类
 // ----------------------------------------------------
-export class WebGLRenderer {
+export class WebGL2Renderer {
   constructor(canvas) {
     this.canvas = canvas;
     const gl = canvas.getContext('webgl2', {
@@ -578,3 +578,4 @@ export class WebGLRenderer {
     return out;
   }
 }
+export { WebGL2Renderer as WebGLRenderer };
