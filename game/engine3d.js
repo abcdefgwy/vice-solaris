@@ -421,6 +421,16 @@ export class WebGL2Renderer {
     this.resize();
   }
 
+  setSpotlight(pos, dir, cutoff = 0.88) {
+    Vec3.copy(this.spotlightPos, pos);
+    Vec3.copy(this.spotlightDir, dir);
+    this.spotlightCutoff = cutoff;
+  }
+
+  clearSpotlight() {
+    Vec3.set(this.spotlightPos, 0, -100, 0);
+  }
+
   resize() {
     const w = this.canvas.clientWidth || window.innerWidth;
     const h = this.canvas.clientHeight || window.innerHeight;
