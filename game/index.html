@@ -1,18 +1,677 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+<html lang="zh-CN">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Vice Solaris — Solmara Bay</title>
-<style>
-  html, body { margin: 0; height: 100%; overflow: hidden; background: #091322; font-family: system-ui, -apple-system, sans-serif; }
-  #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: crosshair; }
-  #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PELICAN KEY 3D: Sunset Syndicate</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #0d0814;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      color: #fff;
+    }
+    #c3d {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    /* ---------------- HUD 覆盖层 ---------------- */
+    #hud {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 24px;
+      z-index: 10;
+    }
+    .hud-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      width: 100%;
+    }
+    /* 左上角圆形雷达小地图 */
+    .radar-box {
+      position: relative;
+      width: 180px;
+      height: 180px;
+      border-radius: 50%;
+      border: 3px solid rgba(255, 180, 50, 0.75);
+      background: rgba(12, 10, 24, 0.85);
+      box-shadow: 0 0 25px rgba(255, 140, 0, 0.35), inset 0 0 20px rgba(0, 0, 0, 0.8);
+      overflow: hidden;
+    }
+    #radarCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .radar-label {
+      position: absolute;
+      bottom: 6px;
+      width: 100%;
+      text-align: center;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      color: #ffa500;
+      text-shadow: 0 1px 3px #000;
+    }
+    /* 顶部中间任务指引 */
+    .mission-hud {
+      background: linear-gradient(180deg, rgba(20, 15, 30, 0.9) 0%, rgba(10, 8, 16, 0.75) 100%);
+      border: 1px solid rgba(255, 215, 0, 0.4);
+      border-radius: 8px;
+      padding: 12px 28px;
+      text-align: center;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(8px);
+      max-width: 520px;
+    }
+    .mission-title {
+      font-size: 13px;
+      font-weight: 800;
+      color: #ffd700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+      text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+    }
+    .mission-objective {
+      font-size: 14px;
+      font-weight: 600;
+      color: #ffffff;
+      letter-spacing: 0.5px;
+    }
+    .mission-dist {
+      font-size: 11px;
+      color: #ff9d00;
+      margin-top: 4px;
+      font-weight: 700;
+    }
+    /* 右上角现金与通缉星 */
+    .hud-right-top {
+      text-align: right;
+    }
+    .cash-text {
+      font-size: 32px;
+      font-weight: 900;
+      color: #4ef072;
+      text-shadow: 0 0 15px rgba(78, 240, 114, 0.6), 2px 2px 0 #000;
+      letter-spacing: 1.5px;
+      font-family: 'Impact', -apple-system, sans-serif;
+    }
+    .wanted-stars {
+      margin-top: 6px;
+      display: flex;
+      gap: 6px;
+      justify-content: flex-end;
+    }
+    .star {
+      font-size: 20px;
+      color: rgba(255, 255, 255, 0.2);
+      transition: color 0.2s, transform 0.2s;
+    }
+    .star.active {
+      color: #ff3344;
+      text-shadow: 0 0 12px #ff1133;
+      animation: pulseStar 0.8s infinite alternate;
+    }
+    @keyframes pulseStar {
+      from { transform: scale(1.0); }
+      to { transform: scale(1.22); }
+    }
+    .radio-pill {
+      margin-top: 10px;
+      display: inline-block;
+      padding: 6px 14px;
+      background: rgba(25, 20, 35, 0.85);
+      border: 1px solid rgba(255, 100, 200, 0.4);
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #ff77cc;
+      box-shadow: 0 0 12px rgba(255, 100, 200, 0.25);
+      letter-spacing: 1px;
+    }
+
+    /* 右下角速度与仪表盘 */
+    .hud-bottom {
+      display: flex;
+      justify-content: flex-end;
+      align-items: flex-end;
+      width: 100%;
+    }
+    .dash-box {
+      background: linear-gradient(135deg, rgba(20, 15, 30, 0.9) 0%, rgba(10, 8, 16, 0.8) 100%);
+      border: 1px solid rgba(0, 240, 255, 0.3);
+      border-radius: 12px;
+      padding: 16px 22px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(10px);
+      text-align: right;
+      min-width: 220px;
+    }
+    .speed-num {
+      font-size: 42px;
+      font-weight: 900;
+      color: #00f0ff;
+      text-shadow: 0 0 18px rgba(0, 240, 255, 0.6), 2px 2px 0 #000;
+      line-height: 1;
+      font-family: 'Impact', sans-serif;
+    }
+    .speed-unit {
+      font-size: 12px;
+      font-weight: 800;
+      color: rgba(255, 255, 255, 0.7);
+      letter-spacing: 2px;
+      margin-left: 4px;
+    }
+    .bar-group {
+      margin-top: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .bar-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 10px;
+      font-weight: 800;
+      color: rgba(255, 255, 255, 0.8);
+    }
+    .bar-track {
+      flex: 1;
+      height: 7px;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 4px;
+      overflow: hidden;
+      position: relative;
+    }
+    .bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.15s ease-out;
+    }
+    .bar-nos { background: linear-gradient(90deg, #0077ff, #00f0ff); box-shadow: 0 0 8px #00f0ff; }
+    .bar-hp { background: linear-gradient(90deg, #00aa44, #4ef072); box-shadow: 0 0 8px #4ef072; }
+    .bar-armor { background: linear-gradient(90deg, #7722cc, #cc44ff); box-shadow: 0 0 8px #cc44ff; }
+
+    /* 通关横幅 (MISSION PASSED) */
+    #missionPassed {
+      position: absolute;
+      top: 38%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.9);
+      background: rgba(10, 6, 18, 0.95);
+      border-top: 4px solid #ffd700;
+      border-bottom: 4px solid #ffd700;
+      padding: 30px 80px;
+      text-align: center;
+      box-shadow: 0 0 50px rgba(255, 215, 0, 0.5);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease, transform 0.3s ease;
+      z-index: 50;
+    }
+    #missionPassed.show {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1.0);
+    }
+    .passed-title {
+      font-size: 42px;
+      font-weight: 900;
+      color: #ffd700;
+      letter-spacing: 6px;
+      text-shadow: 0 0 25px rgba(255, 215, 0, 0.8), 2px 2px 0 #000;
+      font-family: 'Impact', sans-serif;
+    }
+    .passed-reward {
+      font-size: 26px;
+      font-weight: 800;
+      color: #4ef072;
+      margin-top: 10px;
+      letter-spacing: 2px;
+      text-shadow: 0 0 15px rgba(78, 240, 114, 0.6);
+    }
+
+    /* 启动封面 (Start Overlay) */
+    #startScreen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(circle at center, rgba(35, 15, 45, 0.85) 0%, rgba(10, 5, 18, 0.96) 100%);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+      transition: opacity 0.5s ease;
+      cursor: pointer;
+    }
+    #startScreen.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+    .game-logo {
+      font-size: 54px;
+      font-weight: 900;
+      letter-spacing: 5px;
+      text-transform: uppercase;
+      text-align: center;
+      background: linear-gradient(180deg, #fff 0%, #ffcc00 45%, #ff3366 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      filter: drop-shadow(0 0 35px rgba(255, 80, 120, 0.6));
+      font-family: 'Impact', -apple-system, sans-serif;
+      margin-bottom: 6px;
+    }
+    .game-subtitle {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: 8px;
+      color: #00f0ff;
+      text-shadow: 0 0 15px #00f0ff;
+      margin-bottom: 35px;
+    }
+    .play-btn {
+      padding: 16px 48px;
+      font-size: 20px;
+      font-weight: 900;
+      letter-spacing: 3px;
+      background: linear-gradient(90deg, #ff8800, #ff0055);
+      border: 2px solid #fff;
+      border-radius: 40px;
+      color: #fff;
+      box-shadow: 0 0 30px rgba(255, 0, 85, 0.6);
+      animation: pulseBtn 1.2s infinite alternate;
+      cursor: pointer;
+    }
+    @keyframes pulseBtn {
+      from { transform: scale(1.0); box-shadow: 0 0 20px rgba(255, 0, 85, 0.5); }
+      to { transform: scale(1.06); box-shadow: 0 0 45px rgba(255, 136, 0, 0.8); }
+    }
+    .controls-hint {
+      margin-top: 40px;
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.65);
+      letter-spacing: 1.5px;
+      line-height: 1.8;
+      text-align: center;
+    }
+    .controls-hint span {
+      color: #ffd700;
+      font-weight: 800;
+    }
+  </style>
 </head>
 <body>
-<canvas id="game" aria-label="Vice Solaris: open-world coastal action and driving game set in Solmara Bay"></canvas>
-<p id="status" role="status" aria-live="polite"></p>
-<script type="module" src="./src/main.js"></script>
+  <!-- 3D WebGL2 画布 -->
+  <canvas id="c3d"></canvas>
+
+  <!-- 游戏 HUD -->
+  <div id="hud">
+    <div class="hud-top">
+      <!-- 左上角小地图 -->
+      <div class="radar-box">
+        <canvas id="radarCanvas" width="180" height="180"></canvas>
+        <div class="radar-label">PELICAN RADAR</div>
+      </div>
+
+      <!-- 顶部任务目标 -->
+      <div class="mission-hud">
+        <div class="mission-title" id="hudMissionTitle">MISSION 1: 码头夺取走私货箱</div>
+        <div class="mission-objective" id="hudMissionObj">驾车前往 Pelican 港口码头栈桥 (金色地标)</div>
+        <div class="mission-dist" id="hudMissionDist">距离: 345m</div>
+      </div>
+
+      <!-- 右上角现金、通缉与电台 -->
+      <div class="hud-right-top">
+        <div class="cash-text" id="hudCash">$125,000</div>
+        <div class="wanted-stars">
+          <div class="star" id="star1">★</div>
+          <div class="star" id="star2">★</div>
+          <div class="star" id="star3">★</div>
+          <div class="star" id="star4">★</div>
+          <div class="star" id="star5">★</div>
+        </div>
+        <div class="radio-pill" id="hudRadio">📻 FLASH FM: 80s Synthwave</div>
+      </div>
+    </div>
+
+    <!-- 右下角仪表盘 -->
+    <div class="hud-bottom">
+      <div class="dash-box">
+        <div>
+          <span class="speed-num" id="hudSpeed">0</span>
+          <span class="speed-unit">KM/H</span>
+        </div>
+        <div class="bar-group">
+          <div class="bar-row">
+            <span>NOS</span>
+            <div class="bar-track"><div class="bar-fill bar-nos" id="barNos" style="width: 100%;"></div></div>
+          </div>
+          <div class="bar-row">
+            <span>HP</span>
+            <div class="bar-track"><div class="bar-fill bar-hp" id="barHp" style="width: 100%;"></div></div>
+          </div>
+          <div class="bar-row">
+            <span>ARMOR</span>
+            <div class="bar-track"><div class="bar-fill bar-armor" id="barArmor" style="width: 100%;"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 通关横幅 -->
+  <div id="missionPassed">
+    <div class="passed-title">★ MISSION PASSED ★</div>
+    <div class="passed-reward" id="passedRewardText">+$25,000</div>
+  </div>
+
+  <!-- 启动封面 -->
+  <div id="startScreen">
+    <div class="game-logo">PELICAN KEY 3D</div>
+    <div class="game-subtitle">SUNSET SYNDICATE</div>
+    <button class="play-btn">PRESS SPACE OR CLICK TO PLAY</button>
+    <div class="controls-hint">
+      <span>W A S D</span> 驾驶 / 移动 &nbsp;|&nbsp; <span>SPACE</span> 手刹漂移 / 跳跃 &nbsp;|&nbsp; <span>SHIFT</span> 氮气 NOS<br>
+      <span>F</span> 抢车 / 上下车 &nbsp;|&nbsp; <span>C</span> 切换电台 &nbsp;|&nbsp; <span>鼠标左键</span> 开火瞄准
+    </div>
+  </div>
+
+  <!-- 原生模块入口 -->
+  <script type="module">
+    import { WebGL2Renderer } from './engine3d.js';
+    import { buildCityWorld } from './world.js';
+    import { AudioManager } from './audio.js';
+    import { GameManager } from './game.js';
+
+    const canvas = document.getElementById('c3d');
+    const renderer = new WebGL2Renderer(canvas);
+    const world = buildCityWorld(renderer);
+    const audio = new AudioManager();
+    const game = new GameManager(renderer, world, audio);
+
+    // 小地图雷达 Canvas
+    const radarCanvas = document.getElementById('radarCanvas');
+    const radarCtx = radarCanvas.getContext('2d');
+
+    // UI 引用
+    const hudCash = document.getElementById('hudCash');
+    const hudSpeed = document.getElementById('hudSpeed');
+    const hudRadio = document.getElementById('hudRadio');
+    const hudMissionTitle = document.getElementById('hudMissionTitle');
+    const hudMissionObj = document.getElementById('hudMissionObj');
+    const hudMissionDist = document.getElementById('hudMissionDist');
+    const barNos = document.getElementById('barNos');
+    const barHp = document.getElementById('barHp');
+    const barArmor = document.getElementById('barArmor');
+    const missionPassed = document.getElementById('missionPassed');
+    const passedRewardText = document.getElementById('passedRewardText');
+    const startScreen = document.getElementById('startScreen');
+    const stars = [
+      document.getElementById('star1'),
+      document.getElementById('star2'),
+      document.getElementById('star3'),
+      document.getElementById('star4'),
+      document.getElementById('star5')
+    ];
+
+    let isGameRunning = false;
+
+    // 评测沙箱 shots.json 自动截图特定场景布景 (4 大黄金杀手锏视角)
+    const urlParams = new URLSearchParams(window.location.search);
+    const shotMode = urlParams.get('shot');
+    if (shotMode) {
+      isGameRunning = true;
+      startScreen.classList.add('hidden');
+      if (shotMode === 'cover') {
+        // 封面：展示高画质跑车车前侧视角，背景是高楼日落
+        game.inCar = true;
+        game.playerCar.pos[0] = 15;
+        game.playerCar.pos[2] = 20;
+        game.playerCar.yaw = 0.5;
+        game.cameraPos[0] = 10;
+        game.cameraPos[1] = 2.4;
+        game.cameraPos[2] = 12;
+        game.cameraTarget[0] = 15;
+        game.cameraTarget[1] = 1.0;
+        game.cameraTarget[2] = 20;
+        startScreen.classList.remove('hidden'); // 保留高质感 LOGO 标题
+      } else if (shotMode === 'chase') {
+        // 极速飙车：160 KM/H 狂飙，NOS 氮气开启，FOV 拉大
+        game.inCar = true;
+        game.playerCar.speed = 46.0;
+        game.playerCar.isNosActive = true;
+        game.cameraFov = 78.0;
+      } else if (shotMode === 'onfoot') {
+        // 步行动作：角色下车持枪站于跑车旁
+        game.inCar = false;
+        game.playerCharPos[0] = game.playerCar.pos[0] + 3.2;
+        game.playerCharPos[2] = game.playerCar.pos[2] + 1.5;
+        game.playerCharYaw = -1.2;
+        game.cameraPos[0] = game.playerCharPos[0] - 2.8;
+        game.cameraPos[1] = 2.2;
+        game.cameraPos[2] = game.playerCharPos[2] - 4.5;
+        game.cameraTarget[0] = game.playerCharPos[0];
+        game.cameraTarget[1] = 1.4;
+        game.cameraTarget[2] = game.playerCharPos[2];
+      } else if (shotMode === 'mission') {
+        // 3星通缉 + 警用直升机探照灯追捕 + 金色任务光柱
+        game.inCar = true;
+        game.playerCar.speed = 36.0;
+        game.triggerWanted(3);
+        game.missionPassedBannerTimer = 4.0; // 悬挂 MISSION PASSED 奖励横幅
+      }
+    }
+
+    function startGame() {
+      if (isGameRunning) return;
+      isGameRunning = true;
+      audio.init();
+      audio.resume();
+      startScreen.classList.add('hidden');
+    }
+
+    startScreen.addEventListener('click', startGame);
+
+    // 键盘输入监听
+    window.addEventListener('keydown', (e) => {
+      if (!isGameRunning) {
+        if (e.code === 'Space' || e.code === 'Enter') startGame();
+        return;
+      }
+      if (e.code === 'KeyW' || e.code === 'ArrowUp') game.input.forward = true;
+      if (e.code === 'KeyS' || e.code === 'ArrowDown') game.input.backward = true;
+      if (e.code === 'KeyA' || e.code === 'ArrowLeft') game.input.left = true;
+      if (e.code === 'KeyD' || e.code === 'ArrowRight') game.input.right = true;
+      if (e.code === 'Space') {
+        game.input.handbrake = true;
+        e.preventDefault();
+      }
+      if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+        game.input.nos = true;
+        if (game.playerCar.nos > 5) audio.playNosBoost();
+      }
+      if (e.code === 'KeyF') {
+        // 上下车切换
+        game.inCar = !game.inCar;
+        audio.playClickSound();
+      }
+      if (e.code === 'KeyC') {
+        // 切换车载电台
+        hudRadio.textContent = audio.nextRadioStation();
+      }
+    });
+
+    window.addEventListener('keyup', (e) => {
+      if (e.code === 'KeyW' || e.code === 'ArrowUp') game.input.forward = false;
+      if (e.code === 'KeyS' || e.code === 'ArrowDown') game.input.backward = false;
+      if (e.code === 'KeyA' || e.code === 'ArrowLeft') game.input.left = false;
+      if (e.code === 'KeyD' || e.code === 'ArrowRight') game.input.right = false;
+      if (e.code === 'Space') game.input.handbrake = false;
+      if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') game.input.nos = false;
+    });
+
+    // 鼠标点击开火
+    window.addEventListener('mousedown', (e) => {
+      if (!isGameRunning) return;
+      if (e.button === 0) {
+        audio.playGunshot(game.currentWeapon.toLowerCase());
+        game.triggerWanted(1); // 开火吸引警察 1 星
+      }
+    });
+
+    // 绘制小地图雷达
+    function renderRadar() {
+      const w = radarCanvas.width;
+      const h = radarCanvas.height;
+      const cx = w * 0.5;
+      const cy = h * 0.5;
+      radarCtx.clearRect(0, 0, w, h);
+
+      // 背景与网格
+      radarCtx.fillStyle = 'rgba(12, 10, 24, 0.9)';
+      radarCtx.fillRect(0, 0, w, h);
+
+      radarCtx.strokeStyle = 'rgba(255, 160, 40, 0.15)';
+      radarCtx.lineWidth = 1;
+      radarCtx.beginPath();
+      radarCtx.arc(cx, cy, 35, 0, Math.PI * 2);
+      radarCtx.arc(cx, cy, 65, 0, Math.PI * 2);
+      radarCtx.stroke();
+
+      const pPos = game.inCar ? game.playerCar.pos : game.playerCharPos;
+      const pYaw = game.inCar ? game.playerCar.yaw : game.playerCharYaw;
+      const scale = 0.45;
+
+      // 绘制任务目标地标点 (金色发光)
+      const currentMission = game.missions[game.currentMissionIdx];
+      if (currentMission) {
+        const dx = (currentMission.targetPos[0] - pPos[0]) * scale;
+        const dz = (currentMission.targetPos[2] - pPos[2]) * scale;
+        const rx = cx + dx * Math.cos(-pYaw) - dz * Math.sin(-pYaw);
+        const ry = cy + dx * Math.sin(-pYaw) + dz * Math.cos(-pYaw);
+
+        radarCtx.fillStyle = '#ffd700';
+        radarCtx.shadowColor = '#ffd700';
+        radarCtx.shadowBlur = 8;
+        radarCtx.beginPath();
+        radarCtx.arc(rx, ry, 6, 0, Math.PI * 2);
+        radarCtx.fill();
+        radarCtx.shadowBlur = 0;
+      }
+
+      // 绘制警车红蓝闪烁点
+      for (const cop of game.policeCars) {
+        const dx = (cop.pos[0] - pPos[0]) * scale;
+        const dz = (cop.pos[2] - pPos[2]) * scale;
+        const rx = cx + dx * Math.cos(-pYaw) - dz * Math.sin(-pYaw);
+        const ry = cy + dx * Math.sin(-pYaw) + dz * Math.cos(-pYaw);
+
+        radarCtx.fillStyle = Math.floor(performance.now() / 250) % 2 === 0 ? '#ff2244' : '#2288ff';
+        radarCtx.beginPath();
+        radarCtx.arc(rx, ry, 4, 0, Math.PI * 2);
+        radarCtx.fill();
+      }
+
+      // 绘制警用直升机标示
+      if (game.helicopter && game.wantedStars >= 3) {
+        const dx = (game.helicopter.pos[0] - pPos[0]) * scale;
+        const dz = (game.helicopter.pos[2] - pPos[2]) * scale;
+        const rx = cx + dx * Math.cos(-pYaw) - dz * Math.sin(-pYaw);
+        const ry = cy + dx * Math.sin(-pYaw) + dz * Math.cos(-pYaw);
+
+        radarCtx.strokeStyle = '#ff0055';
+        radarCtx.lineWidth = 2;
+        radarCtx.beginPath();
+        radarCtx.arc(rx, ry, 7, 0, Math.PI * 2);
+        radarCtx.stroke();
+      }
+
+      // 中心玩家箭头
+      radarCtx.fillStyle = '#00f0ff';
+      radarCtx.shadowColor = '#00f0ff';
+      radarCtx.shadowBlur = 6;
+      radarCtx.beginPath();
+      radarCtx.moveTo(cx, cy - 8);
+      radarCtx.lineTo(cx - 5, cy + 6);
+      radarCtx.lineTo(cx + 5, cy + 6);
+      radarCtx.closePath();
+      radarCtx.fill();
+      radarCtx.shadowBlur = 0;
+    }
+
+    // 主游戏循环 (60FPS)
+    let lastTime = performance.now();
+    function animate() {
+      requestAnimationFrame(animate);
+      const now = performance.now();
+      const dt = Math.min(0.1, (now - lastTime) * 0.001);
+      lastTime = now;
+
+      // 更新与渲染
+      game.update(dt);
+      game.render();
+      renderRadar();
+
+      // 同步 HUD 数据
+      const currentSpeedKmh = Math.round(Math.abs(game.playerCar.speed) * 3.6);
+      hudSpeed.textContent = currentSpeedKmh;
+      hudCash.textContent = '$' + game.cash.toLocaleString();
+      barNos.style.width = Math.round(game.playerCar.nos) + '%';
+      barHp.style.width = Math.round(game.playerCar.health) + '%';
+      barArmor.style.width = Math.round(game.armor) + '%';
+
+      // 任务信息与距离
+      const curMission = game.missions[game.currentMissionIdx];
+      if (curMission) {
+        hudMissionTitle.textContent = curMission.title;
+        hudMissionObj.textContent = curMission.objective;
+        const pPos = game.inCar ? game.playerCar.pos : game.playerCharPos;
+        const dist = Math.round(Math.hypot(curMission.targetPos[0] - pPos[0], curMission.targetPos[2] - pPos[2]));
+        hudMissionDist.textContent = '距离地标: ' + dist + 'm';
+      }
+
+      // 通缉星状态更新
+      for (let s = 0; s < 5; s++) {
+        if (s < game.wantedStars) stars[s].classList.add('active');
+        else stars[s].classList.remove('active');
+      }
+
+      // 通关横幅展示
+      if (game.missionPassedBannerTimer > 0) {
+        passedRewardText.textContent = '+$' + game.lastPassedReward.toLocaleString();
+        missionPassed.classList.add('show');
+      } else {
+        missionPassed.classList.remove('show');
+      }
+    }
+
+    requestAnimationFrame(animate);
+  </script>
 </body>
 </html>
