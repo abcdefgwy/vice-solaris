@@ -404,13 +404,13 @@
 
   <!-- 原生模块入口 -->
   <script type="module">
-    import { WebGL2Renderer } from './engine3d.js';
-    import { buildCityWorld } from './world.js';
-    import { AudioManager } from './audio.js';
-    import { GameManager } from './game.js';
+    import { WebGLRenderer } from './engine3d.js?v=2';
+    import { buildCityWorld } from './world.js?v=2';
+    import { AudioManager } from './audio.js?v=2';
+    import { GameManager } from './game.js?v=2';
 
     const canvas = document.getElementById('c3d');
-    const renderer = new WebGL2Renderer(canvas);
+    const renderer = new WebGLRenderer(canvas);
     const world = buildCityWorld(renderer);
     const audio = new AudioManager();
     const game = new GameManager(renderer, world, audio);
