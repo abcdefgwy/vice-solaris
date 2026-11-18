@@ -404,13 +404,15 @@
 
   <!-- 原生模块入口 -->
   <script type="module">
-    import { WebGLRenderer } from './engine3d.js?v=2';
-    import { buildCityWorld } from './world.js?v=2';
-    import { AudioManager } from './audio.js?v=2';
-    import { GameManager } from './game.js?v=2';
+    import { WebGLRenderer } from './engine3d.js?v=5';
+    import { buildCityWorld } from './world.js?v=5';
+    import { AudioManager } from './audio.js?v=5';
+    import { GameManager } from './game.js?v=5';
 
     const canvas = document.getElementById('c3d');
     const renderer = new WebGLRenderer(canvas);
+    if (!renderer.clearSpotlight) renderer.clearSpotlight = function() {};
+    if (!renderer.setSpotlight) renderer.setSpotlight = function() {};
     const world = buildCityWorld(renderer);
     const audio = new AudioManager();
     const game = new GameManager(renderer, world, audio);
